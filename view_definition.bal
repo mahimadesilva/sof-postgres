@@ -67,6 +67,16 @@ public type ViewDefinitionSelect record {|
     ViewDefinitionWhere[]? 'where = ();
 |};
 
+# A top-level SQL-on-FHIR ViewDefinition.
+public type ViewDefinition record {|
+    # The FHIR resource type this view is based on (e.g. `"Patient"`)
+    string 'resource;
+    # Top-level select elements
+    ViewDefinitionSelect[] 'select;
+    # Optional top-level row filters
+    ViewDefinitionWhere[]? 'where = ();
+|};
+
 # The result of expanding a single union combination from a ViewDefinition.
 # `selects` holds the select elements contributing to this combination.
 # `unionChoices` holds the union branch index chosen for each select element

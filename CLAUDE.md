@@ -34,8 +34,9 @@ Entry point: `transpile(expression, context)` in `transpiler.bal` orchestrates s
 
 SQL-on-FHIR ViewDefinition processing sits above the FHIRPath transpiler:
 
-- `view_definition.bal` - Core types: `ViewDefinitionSelect`, `ViewDefinitionColumn`, `ViewDefinitionWhere`, `ViewDefinitionColumnTag`, `SelectCombination`
+- `view_definition.bal` - Core types: `ViewDefinition`, `ViewDefinitionSelect`, `ViewDefinitionColumn`, `ViewDefinitionWhere`, `ViewDefinitionColumnTag`, `SelectCombination`
 - `select_combination_expander.bal` - `expandCombinations()`: expands all possible `unionAll` branch combinations from a ViewDefinition's `select` array into a flat list of `SelectCombination` records (Cartesian product of union choices)
+- `query_generator.bal` - Query generation layer: `generateQuery()` / `generateAllSelectStatements()` / `generateStatementForCombination()` / `generateSimpleStatement()`. Simple (no forEach, no repeat) path is implemented; forEach and repeat return a not-yet-implemented error.
 
 ### TranspilerContext
 
@@ -56,6 +57,7 @@ The `TranspilerContext` record controls SQL generation:
 
 Full SQL-on-FHIR v2 implementation targeting T-SQL/MS SQL Server. Key components being ported:
 - `queryGenerator/SelectCombinationExpander.ts` → `select_combination_expander.bal` ✓
+- `queryGenerator.ts` (`generateSimpleStatement`) → `query_generator.bal` (simple path) ✓
 - `queryGenerator/ForEachProcessor.ts`, `RepeatProcessor.ts`, `SelectClauseBuilder.ts`, etc. — pending
 - `fhirpath/transpiler.ts` — ANTLR4-based FHIRPath-to-T-SQL transpiler (Ballerina has its own hand-rolled equivalent)
 
