@@ -90,7 +90,6 @@ dependencies = [
 	{org = "ballerina", name = "test"}
 ]
 modules = [
-	{org = "mahima_de_silva", packageName = "sof_postgres", moduleName = "sof_postgres"},
-	{org = "mahima_de_silva", packageName = "sof_postgres", moduleName = "sof_postgres.grammar"}
+	{org = "mahima_de_silva", packageName = "sof_postgres", moduleName = "sof_postgres"}
 ]
 
