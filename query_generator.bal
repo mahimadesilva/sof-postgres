@@ -71,7 +71,7 @@ public isolated function generateStatementForCombination(
     if combinationHasRepeat(combination) {
         return error("generateRepeatStatement not yet implemented");
     } else if combinationHasForEach(combination) {
-        return error("generateForEachStatement not yet implemented");
+        return generateForEachStatement(combination, viewDef, ctx);
     }
     return generateSimpleStatement(combination, viewDef, ctx);
 }
@@ -277,23 +277,53 @@ isolated function buildWhereClause(
 // COMBINATION DETECTION HELPERS
 // ========================================
 
+# Check whether a single select element (or any element reachable from it) uses forEach.
+#
+# Recursively checks nested `select` arrays and `unionAll` options.
+#
+# + sel - The select element to check
+# + return - `true` if the element or any descendant uses forEach/forEachOrNull
+isolated function selectHasForEach(ViewDefinitionSelect sel) returns boolean {
+    if sel.forEach is string || sel.forEachOrNull is string {
+        return true;
+    }
+    ViewDefinitionSelect[]? nested = sel.'select;
+    if nested is ViewDefinitionSelect[] {
+        foreach ViewDefinitionSelect ns in nested {
+            if selectHasForEach(ns) {
+                return true;
+            }
+        }
+    }
+    ViewDefinitionSelect[]? ua = sel.unionAll;
+    if ua is ViewDefinitionSelect[] {
+        foreach ViewDefinitionSelect u in ua {
+            if selectHasForEach(u) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 # Check whether any select in the combination has a `forEach` or `forEachOrNull` directive.
 #
-# Also checks the chosen `unionAll` branch for each select.
+# Checks recursively into nested `select` arrays and `unionAll` options, and also
+# checks the chosen `unionAll` branch for each top-level select element.
 #
 # + combination - The select combination
-# + return - `true` if any select (or chosen union branch) uses forEach/forEachOrNull
+# + return - `true` if any select (or any descendant) uses forEach/forEachOrNull
 isolated function combinationHasForEach(SelectCombination combination) returns boolean {
     foreach int i in 0 ..< combination.selects.length() {
         ViewDefinitionSelect sel = combination.selects[i];
-        if sel.forEach is string || sel.forEachOrNull is string {
+        if selectHasForEach(sel) {
             return true;
         }
         int unionChoice = combination.unionChoices[i];
         ViewDefinitionSelect[]? unionAll = sel.unionAll;
         if unionAll is ViewDefinitionSelect[] && unionChoice >= 0 && unionChoice < unionAll.length() {
             ViewDefinitionSelect branch = unionAll[unionChoice];
-            if branch.forEach is string || branch.forEachOrNull is string {
+            if selectHasForEach(branch) {
                 return true;
             }
         }
