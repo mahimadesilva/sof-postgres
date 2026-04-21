@@ -1161,6 +1161,10 @@ isolated function isBooleanExpression(string expr) returns boolean {
            expr.includes(" >= ") ||
            expr.includes(" AND ") ||
            expr.includes(" OR ") ||
+           expr.includes(" IS NULL") ||
+           expr.includes(" IS NOT NULL") ||
+           expr.startsWith("EXISTS ") ||
+           expr.startsWith("(EXISTS ") ||
            expr.startsWith("NOT ") ||
            expr.startsWith("(NOT ");
 }

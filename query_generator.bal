@@ -202,7 +202,8 @@ isolated function generateColumnExpression(ViewDefinitionColumn col, TranspilerC
     ColumnTag[]? colTags = ();
     ViewDefinitionColumnTag[]? rawTags = col.tag;
     if rawTags is ViewDefinitionColumnTag[] {
-        colTags = from ViewDefinitionColumnTag t in rawTags select {name: t.name, value: t.value};
+        colTags = from ViewDefinitionColumnTag t in rawTags
+            select {name: t.name, value: t.value};
     }
 
     string pgType = inferSqlType(fhirType, colTags);
@@ -265,6 +266,9 @@ isolated function buildWhereClause(
     if whereConditions is ViewDefinitionWhere[] {
         foreach ViewDefinitionWhere w in whereConditions {
             string condition = check transpile(w.path, ctx);
+            if !isBooleanExpression(condition) {
+                condition = "(" + condition + " IS NOT NULL AND " + condition + " != 'false')";
+            }
             conditions.push(condition);
         }
     }

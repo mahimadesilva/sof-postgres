@@ -23,16 +23,9 @@
 //     SQL is executed via a compile-time template literal (Ballerina's sql
 //     module does not permit constructing ParameterizedQuery from runtime strings).
 
-import ballerinax/postgresql;
-import ballerinax/postgresql.driver as _;
 import ballerina/sql;
 import ballerina/test;
-
-configurable string host = "localhost";
-configurable int port = 5432;
-configurable string database = "postgres";
-configurable string username = "postgres";
-configurable string password = "postgres";
+import ballerinax/postgresql;
 
 // Module-level record type for view rows.
 type PatientRow record {|
@@ -73,11 +66,11 @@ function testSimplePatientView() returns error? {
     json viewDef = {
         "resource": "Patient",
         "select": [{
-            "column": [
-                {"name": "id", "path": "id"},
-                {"name": "birthDate", "path": "birthDate"}
-            ]
-        }]
+                "column": [
+                    {"name": "id", "path": "id"},
+                    {"name": "birthDate", "path": "birthDate"}
+                ]
+            }]
     };
     TranspilerContext ctx = {
         resourceColumn: "resource_json",
@@ -95,8 +88,9 @@ function testSimplePatientView() returns error? {
     // Ballerina's sql module requires ParameterizedQuery, which can only be
     // created from compile-time template literals — runtime string injection
     // is intentionally not supported.
+    _ = check dbClient->execute(`DROP VIEW IF EXISTS patient_test_view`);
     _ = check dbClient->execute(`
-        CREATE OR REPLACE VIEW patient_test_view AS
+        CREATE VIEW patient_test_view AS
         SELECT
           jsonb_extract_path_text(r.resource_json, 'id') AS "id",
           jsonb_extract_path_text(r.resource_json, 'birthDate') AS "birthDate"
@@ -107,7 +101,8 @@ function testSimplePatientView() returns error? {
     stream<PatientRow, sql:Error?> resultStream = dbClient->query(
         `SELECT id, "birthDate" FROM patient_test_view`
     );
-    PatientRow[] rows = check from PatientRow row in resultStream select row;
+    PatientRow[] rows = check from PatientRow row in resultStream
+        select row;
 
     test:assertEquals(rows.length(), 1, "Expected one row in the view");
     if rows.length() > 0 {
