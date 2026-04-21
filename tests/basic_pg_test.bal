@@ -743,7 +743,17 @@ function testColumnOrdering() returns error? {
         result.push(row.toJson());
     };
     _ = check dbClient->execute(`DROP VIEW IF EXISTS sof_test_view`);
-    test:assertEquals(result, expected);
+    // Row order is implementation-defined under UNION ALL branch interleaving;
+    // assert multiset equality (values and cardinality) instead of positional equality.
+    test:assertEquals(result.length(), expected.length(), msg = "Row count mismatch");
+    json[] remaining = result.clone();
+    foreach json expectedRow in expected {
+        int? idx = remaining.indexOf(expectedRow);
+        if idx is () {
+            test:assertFail(string `Expected row not found in result: ${expectedRow.toJsonString()}`);
+        }
+        _ = remaining.remove(<int>idx);
+    }
     // Verify expected columns exist in first row
     if result.length() > 0 {
         string[] expectedCols = [

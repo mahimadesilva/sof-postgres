@@ -492,6 +492,11 @@ isolated function handleExists(string? base, Expr[] params, TranspilerContext ct
 # + return - The SQL expression for the first element or an error
 isolated function handleFirst(string? base, string[] args, TranspilerContext ctx) returns string|error {
     if base is string {
+        // Base is already a text scalar (e.g. name.family after `name` auto-index);
+        // first() on a singleton is the identity, don't append another '0' segment.
+        if base.startsWith(PATH_TEXT_PREFIX) {
+            return base;
+        }
         // If base is a jsonb_extract_path (array), append '0' segment
         string? extended = tryExtendPathCallWithIndex(base, "0");
         if extended is string {
