@@ -4,10 +4,17 @@ import ballerina/test;
 // Helpers
 // ---------------------------------------------------------------------------
 
-# Default transpiler context used across tests.
-# + return - `TranspilerContext` with `resourceAlias = "r"` and `resourceColumn = "resource"`
+# Default transpiler context used across tests (shared-table layout).
+# + return - `TranspilerContext` with `resourceAlias = "r"`, `resourceColumn = "resource"`, `tableName = "fhir_resources"`
 isolated function defaultCtx() returns TranspilerContext {
-    return {resourceAlias: "r", resourceColumn: "resource"};
+    return {resourceAlias: "r", resourceColumn: "resource", tableName: "fhir_resources"};
+}
+
+# Per-resource-type transpiler context for custom-schema tests.
+# + resourceType - FHIR resource type (e.g. "Patient") — used to derive table name
+# + return - `TranspilerContext` targeting `<ResourceType>Table` with `RESOURCE_JSON` column and no type filter
+isolated function perResourceCtx(string resourceType) returns TranspilerContext {
+    return {resourceAlias: "r", resourceColumn: "RESOURCE_JSON", tableName: resourceType + "Table", filterByResourceType: false};
 }
 
 # Minimal combination with no union choice (single select, unionChoice = -1).
@@ -178,7 +185,7 @@ function testUnionAllCombinations() returns error? {
     };
     ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(result.includes("\nUNION ALL\n"));
     // Both halves should be SELECT statements against the same table.
@@ -197,11 +204,78 @@ function testSingleCombinationNoUnionAll() returns error? {
         ]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertFalse(result.includes("UNION ALL"));
     test:assertTrue(result.includes("SELECT\n"));
     test:assertTrue(result.includes("WHERE r.resource_type = 'Observation'"));
+}
+
+// ---------------------------------------------------------------------------
+// Custom schema — per-resource-type table + RESOURCE_JSON column
+// ---------------------------------------------------------------------------
+
+@test:Config {}
+function testCustomResourceColumn() returns error? {
+    ViewDefinitionSelect sel = {
+        column: [{name: "id", path: "id"}]
+    };
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    TranspilerContext ctx = {resourceAlias: "r", resourceColumn: "RESOURCE_JSON", tableName: "fhir_resources"};
+
+    string result = check generateSimpleStatement(simpleCombination(sel), viewDef, ctx);
+
+    test:assertTrue(result.includes("r.RESOURCE_JSON"), "Expected RESOURCE_JSON column in SQL");
+    test:assertFalse(result.includes("r.resource,") || result.includes("r.resource'"), "Default column must not appear");
+}
+
+@test:Config {}
+function testCustomTableName() returns error? {
+    ViewDefinitionSelect sel = {
+        column: [{name: "id", path: "id"}]
+    };
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    TranspilerContext ctx = {resourceAlias: "r", resourceColumn: "resource", tableName: "PatientTable"};
+
+    string result = check generateSimpleStatement(simpleCombination(sel), viewDef, ctx);
+
+    test:assertTrue(result.includes("FROM PatientTable AS r"), "Expected PatientTable in FROM clause");
+}
+
+@test:Config {}
+function testPerResourceTableNoTypeFilter() returns error? {
+    ViewDefinitionSelect sel = {
+        column: [
+            {name: "id", path: "id"},
+            {name: "birthDate", path: "birthDate"}
+        ]
+    };
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+
+    string result = check generateQuery(viewDef, perResourceCtx("Patient"));
+
+    test:assertTrue(result.includes("FROM PatientTable AS r"), "Expected PatientTable in FROM clause");
+    test:assertTrue(result.includes("RESOURCE_JSON"), "Expected RESOURCE_JSON column in expressions");
+    test:assertFalse(result.includes("resource_type"), "resource_type filter must not appear for per-resource tables");
+}
+
+@test:Config {}
+function testCustomSchemaWithWhere() returns error? {
+    ViewDefinitionSelect sel = {
+        column: [{name: "id", path: "id"}]
+    };
+    ViewDefinition viewDef = {
+        'resource: "Patient",
+        'select: [sel],
+        'where: [{path: "active = true"}]
+    };
+
+    string result = check generateQuery(viewDef, perResourceCtx("Patient"));
+
+    test:assertTrue(result.includes("FROM PatientTable AS r"), "Expected PatientTable");
+    test:assertFalse(result.includes("resource_type"), "resource_type must not appear");
+    test:assertTrue(result.includes("WHERE"), "Expected WHERE clause for the view-level filter");
+    test:assertTrue(result.includes("active"), "Expected transpiled where condition");
 }
 
 // ---------------------------------------------------------------------------

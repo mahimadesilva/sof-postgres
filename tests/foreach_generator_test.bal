@@ -17,7 +17,7 @@ function testForEachSimpleColumnSQL() returns error? {
         'select: [sel]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(
         result.includes("CROSS JOIN LATERAL jsonb_array_elements(r.resource->'name') AS forEach_0(value)"),
@@ -46,7 +46,7 @@ function testForEachOrNullSQL() returns error? {
         'select: [sel]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(
         result.includes("LEFT JOIN LATERAL jsonb_array_elements(r.resource->'name') AS forEach_0(value) ON TRUE"),
@@ -75,7 +75,7 @@ function testForEachWithNonForEachColumn() returns error? {
         'select: [idSel, nameSel]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(
         result.includes("jsonb_extract_path_text(r.resource, 'id') AS \"id\""),
@@ -111,7 +111,7 @@ function testForEachNestedInNonForEach() returns error? {
         'select: [outerSel]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(result.includes("CROSS JOIN LATERAL"), "Expected LATERAL JOIN for nested forEach");
     test:assertTrue(result.includes("\"family\""), "Expected family column from nested forEach");
@@ -135,7 +135,7 @@ function testForEachMultiSegmentPath() returns error? {
         'select: [sel]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(
         result.includes("jsonb_array_elements(r.resource->'name') AS forEach_0_nest0(value)"),
@@ -168,9 +168,39 @@ function testForEachGenerateQuery() returns error? {
         ]
     };
 
-    string result = check generateQuery(viewDef);
+    string result = check generateQuery(viewDef, defaultCtx());
 
     test:assertTrue(result.includes("LATERAL"), "Expected LATERAL keyword in forEach query");
     test:assertTrue(result.includes("WHERE r.resource_type = 'Observation'"));
     test:assertTrue(result.startsWith("SELECT"), "Expected query to start with SELECT");
+}
+
+// ---------------------------------------------------------------------------
+// testForEachCustomTableAndColumn
+// ---------------------------------------------------------------------------
+
+@test:Config {}
+function testForEachCustomTableAndColumn() returns error? {
+    ViewDefinition viewDef = {
+        'resource: "Observation",
+        'select: [
+            {
+                forEach: "component",
+                column: [{name: "code", path: "code"}]
+            }
+        ]
+    };
+    TranspilerContext ctx = {
+        resourceAlias: "r",
+        resourceColumn: "RESOURCE_JSON",
+        tableName: "ObservationTable",
+        filterByResourceType: false
+    };
+
+    string result = check generateQuery(viewDef, ctx);
+
+    test:assertTrue(result.includes("FROM ObservationTable AS r"), "Expected ObservationTable in FROM clause");
+    test:assertTrue(result.includes("RESOURCE_JSON"), "Expected RESOURCE_JSON in LATERAL JOIN source");
+    test:assertFalse(result.includes("resource_type"), "resource_type must not appear for per-resource tables");
+    test:assertTrue(result.includes("LATERAL"), "Expected LATERAL JOIN for forEach");
 }

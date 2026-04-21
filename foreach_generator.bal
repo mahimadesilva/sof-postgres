@@ -59,7 +59,7 @@ public isolated function generateForEachStatement(
         ViewDefinition viewDef,
         TranspilerContext ctx) returns string|error {
 
-    string fromClause = generateFromClause(ctx.resourceAlias);
+    string fromClause = generateFromClause(ctx.resourceAlias, ctx.tableName);
 
     [ForEachEntry[], ViewDefinitionSelect[]] mapResult =
         buildForEachContextMap(combination.selects, ctx, combination);
@@ -198,6 +198,8 @@ isolated function buildForEachEntries(
     TranspilerContext forEachCtx = {
         resourceAlias: baseCtx.resourceAlias,
         resourceColumn: baseCtx.resourceColumn,
+        tableName: baseCtx.tableName,
+        filterByResourceType: baseCtx.filterByResourceType,
         constants: baseCtx.constants,
         iterationContext: applyAlias + ".value",
         currentForEachAlias: applyAlias,

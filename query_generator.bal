@@ -20,8 +20,6 @@
 // Generates PostgreSQL SELECT statements from ViewDefinition structures.
 // Builds on top of expandCombinations() and the FHIRPath transpiler.
 
-const string FHIR_RESOURCES_TABLE = "fhir_resources";
-
 // ========================================
 // PUBLIC API
 // ========================================
@@ -29,13 +27,13 @@ const string FHIR_RESOURCES_TABLE = "fhir_resources";
 # Generate a PostgreSQL query for a ViewDefinition.
 #
 # Expands all `unionAll` combinations and joins them with `UNION ALL`.
-# Uses a default context with `resourceAlias = "r"`.
+# The supplied `TranspilerContext` controls the table name, JSONB column, and
+# whether a `resource_type` filter is emitted in the WHERE clause.
 #
 # + viewDef - The ViewDefinition to generate SQL for
-# + resourceAlias - SQL alias for the resource table (default `"r"`)
+# + ctx - The transpiler context (must include `tableName` and `resourceColumn`)
 # + return - The generated SQL string, or an error
-public isolated function generateQuery(ViewDefinition viewDef, string resourceAlias = "r") returns string|error {
-    TranspilerContext ctx = {resourceAlias, resourceColumn: "resource"};
+public isolated function generateQuery(ViewDefinition viewDef, TranspilerContext ctx) returns string|error {
     string[] statements = check generateAllSelectStatements(viewDef, ctx);
     return string:'join("\nUNION ALL\n", ...statements);
 }
@@ -90,7 +88,7 @@ public isolated function generateSimpleStatement(
         TranspilerContext ctx) returns string|error {
 
     string selectClause = check generateSimpleSelectClause(combination, ctx);
-    string fromClause = generateFromClause(ctx.resourceAlias);
+    string fromClause = generateFromClause(ctx.resourceAlias, ctx.tableName);
     string? whereClause = check buildWhereClause(viewDef.'resource, ctx.resourceAlias, viewDef.'where, ctx);
 
     string statement = selectClause + "\n" + fromClause;
@@ -236,20 +234,21 @@ isolated function applyTypeCast(string expression, string pgType) returns string
 # Generate the FROM clause.
 #
 # + resourceAlias - SQL alias for the resource table
-# + return - The FROM clause string (e.g. `FROM fhir_resources AS r`)
-isolated function generateFromClause(string resourceAlias) returns string {
-    return "FROM " + FHIR_RESOURCES_TABLE + " AS " + resourceAlias;
+# + tableName - The SQL table name to query
+# + return - The FROM clause string (e.g. `FROM PatientTable AS r`)
+isolated function generateFromClause(string resourceAlias, string tableName) returns string {
+    return "FROM " + tableName + " AS " + resourceAlias;
 }
 
 # Build the WHERE clause combining resource type filter and view-level filters.
 #
-# Always includes `<alias>.resource_type = '<resource>'`.
+# Includes `<alias>.resource_type = '<resource>'` only when `ctx.filterByResourceType` is `true`.
 # Appends each `ViewDefinitionWhere` condition by transpiling its FHIRPath expression.
 #
 # + resourceType - The FHIR resource type string (e.g. `"Patient"`)
 # + resourceAlias - SQL alias for the resource table
 # + whereConditions - Optional view-level filter conditions
-# + ctx - The transpiler context
+# + ctx - The transpiler context (`filterByResourceType` controls the type filter)
 # + return - The WHERE clause string, or `()` if no conditions, or an error
 isolated function buildWhereClause(
         string resourceType,
@@ -258,7 +257,9 @@ isolated function buildWhereClause(
         TranspilerContext ctx) returns string?|error {
 
     string[] conditions = [];
-    conditions.push(resourceAlias + ".resource_type = '" + resourceType + "'");
+    if ctx.filterByResourceType {
+        conditions.push(resourceAlias + ".resource_type = '" + resourceType + "'");
+    }
 
     if whereConditions is ViewDefinitionWhere[] {
         foreach ViewDefinitionWhere w in whereConditions {

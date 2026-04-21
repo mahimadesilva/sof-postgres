@@ -28,7 +28,10 @@
 # Context passed to the transpiler, controlling how SQL is generated.
 #
 # + resourceAlias - The SQL table alias for the resource (e.g., "r")
-# + resourceColumn - The column name holding the JSONB resource data (e.g., "resource")
+# + resourceColumn - The column name holding the JSONB resource data (e.g., "resource" or "RESOURCE_JSON")
+# + tableName - The SQL table name to query (e.g., "fhir_resources" or "PatientTable")
+# + filterByResourceType - When `true`, adds `WHERE alias.resource_type = '<type>'`.
+#                          Set to `false` for per-resource-type tables that have no discriminator column.
 # + constants - External constants (%name references in FHIRPath)
 # + iterationContext - Current iteration context expression (e.g., "whereItem.value")
 # + currentForEachAlias - forEach alias (e.g., "forEach_0")
@@ -36,8 +39,10 @@
 # + forEachPathSegments - forEach path segments (e.g., ["name"])
 # + testId - Optional test identifier
 public type TranspilerContext record {|
-    string resourceAlias;
-    string resourceColumn = "resource";
+    string resourceAlias = "r";
+    string resourceColumn;
+    string tableName;
+    boolean filterByResourceType = true;
     map<string|int|float|boolean?> constants?;
     string? iterationContext = ();
     string? currentForEachAlias = ();
@@ -402,6 +407,8 @@ isolated function handleWhere(string? base, Expr[] params, TranspilerContext ctx
     TranspilerContext itemCtx = {
         resourceAlias: tableAlias,
         resourceColumn: ctx.resourceColumn,
+        tableName: ctx.tableName,
+        filterByResourceType: ctx.filterByResourceType,
         constants: ctx.constants,
         iterationContext: string `${tableAlias}.value`
     };
@@ -427,6 +434,8 @@ isolated function handleExists(string? base, Expr[] params, TranspilerContext ct
             TranspilerContext itemCtx = {
                 resourceAlias: tableAlias,
                 resourceColumn: ctx.resourceColumn,
+                tableName: ctx.tableName,
+                filterByResourceType: ctx.filterByResourceType,
                 constants: ctx.constants,
                 iterationContext: string `${tableAlias}.value`
             };
