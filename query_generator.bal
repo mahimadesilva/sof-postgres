@@ -30,20 +30,21 @@
 # The supplied `TranspilerContext` controls the table name, JSONB column, and
 # whether a `resource_type` filter is emitted in the WHERE clause.
 #
-# + viewDef - The ViewDefinition to generate SQL for
+# + viewDef - The ViewDefinition as a JSON value (converted via `cloneWithType` internally)
 # + ctx - The transpiler context (must include `tableName` and `resourceColumn`)
 # + return - The generated SQL string, or an error
-public isolated function generateQuery(ViewDefinition viewDef, TranspilerContext ctx) returns string|error {
-    string[] statements = check generateAllSelectStatements(viewDef, ctx);
+public isolated function generateQuery(json viewDef, TranspilerContext ctx) returns string|error {
+    ViewDefinition typedViewDef = check viewDef.cloneWithType(ViewDefinition);
+    string[] statements = check generateAllSelectStatements(typedViewDef, ctx);
     return string:'join("\nUNION ALL\n", ...statements);
 }
 
 # Generate one SQL SELECT string per `SelectCombination`.
 #
-# + viewDef - The ViewDefinition
+# + viewDef - The typed ViewDefinition (already converted from JSON)
 # + ctx - The transpiler context
 # + return - One SQL string per combination, or an error
-public isolated function generateAllSelectStatements(ViewDefinition viewDef, TranspilerContext ctx) returns string[]|error {
+isolated function generateAllSelectStatements(ViewDefinition viewDef, TranspilerContext ctx) returns string[]|error {
     SelectCombination[] combinations = expandCombinations(viewDef.'select);
     string[] statements = [];
     foreach SelectCombination combination in combinations {
@@ -61,7 +62,7 @@ public isolated function generateAllSelectStatements(ViewDefinition viewDef, Tra
 # + viewDef - The ViewDefinition
 # + ctx - The transpiler context
 # + return - The generated SQL string, or an error
-public isolated function generateStatementForCombination(
+isolated function generateStatementForCombination(
         SelectCombination combination,
         ViewDefinition viewDef,
         TranspilerContext ctx) returns string|error {
@@ -82,7 +83,7 @@ public isolated function generateStatementForCombination(
 # + viewDef - The ViewDefinition
 # + ctx - The transpiler context
 # + return - The generated SQL string, or an error
-public isolated function generateSimpleStatement(
+isolated function generateSimpleStatement(
         SelectCombination combination,
         ViewDefinition viewDef,
         TranspilerContext ctx) returns string|error {

@@ -8,13 +8,12 @@ import ballerina/test;
 function testForEachSimpleColumnSQL() returns error? {
     // forEach: "name" with a single column → CROSS JOIN LATERAL on 'name' array,
     // column expression uses forEach_0.value as iteration context.
-    ViewDefinitionSelect sel = {
-        forEach: "name",
-        column: [{name: "family", path: "family"}]
-    };
-    ViewDefinition viewDef = {
-        'resource: "Patient",
-        'select: [sel]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{
+            "forEach": "name",
+            "column": [{"name": "family", "path": "family"}]
+        }]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -37,13 +36,12 @@ function testForEachSimpleColumnSQL() returns error? {
 @test:Config {}
 function testForEachOrNullSQL() returns error? {
     // forEachOrNull: "name" → LEFT JOIN LATERAL … ON TRUE
-    ViewDefinitionSelect sel = {
-        forEachOrNull: "name",
-        column: [{name: "family", path: "family"}]
-    };
-    ViewDefinition viewDef = {
-        'resource: "Patient",
-        'select: [sel]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{
+            "forEachOrNull": "name",
+            "column": [{"name": "family", "path": "family"}]
+        }]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -63,16 +61,15 @@ function testForEachOrNullSQL() returns error? {
 function testForEachWithNonForEachColumn() returns error? {
     // Two selects: one plain (id column), one forEach (family column).
     // Both columns should appear in SELECT; only one LATERAL JOIN should be present.
-    ViewDefinitionSelect idSel = {
-        column: [{name: "id", path: "id"}]
-    };
-    ViewDefinitionSelect nameSel = {
-        forEach: "name",
-        column: [{name: "family", path: "family"}]
-    };
-    ViewDefinition viewDef = {
-        'resource: "Patient",
-        'select: [idSel, nameSel]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [
+            {"column": [{"name": "id", "path": "id"}]},
+            {
+                "forEach": "name",
+                "column": [{"name": "family", "path": "family"}]
+            }
+        ]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -98,17 +95,15 @@ function testForEachNestedInNonForEach() returns error? {
     // forEach is nested inside a non-forEach select's 'select' array.
     // The outer select contributes the id column directly; the inner forEach select
     // contributes the family column via a LATERAL JOIN.
-    ViewDefinitionSelect inner = {
-        forEach: "name",
-        column: [{name: "family", path: "family"}]
-    };
-    ViewDefinitionSelect outerSel = {
-        column: [{name: "id", path: "id"}],
-        'select: [inner]
-    };
-    ViewDefinition viewDef = {
-        'resource: "Patient",
-        'select: [outerSel]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{
+            "column": [{"name": "id", "path": "id"}],
+            "select": [{
+                "forEach": "name",
+                "column": [{"name": "family", "path": "family"}]
+            }]
+        }]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -126,13 +121,12 @@ function testForEachNestedInNonForEach() returns error? {
 function testForEachMultiSegmentPath() returns error? {
     // forEach: "name.given" — two path segments require two nested LATERAL JOINs:
     //   forEach_0_nest0 iterates over 'name', forEach_0 iterates over 'given'.
-    ViewDefinitionSelect sel = {
-        forEach: "name.given",
-        column: [{name: "givenName", path: "0"}]
-    };
-    ViewDefinition viewDef = {
-        'resource: "Patient",
-        'select: [sel]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{
+            "forEach": "name.given",
+            "column": [{"name": "givenName", "path": "0"}]
+        }]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -155,17 +149,15 @@ function testForEachMultiSegmentPath() returns error? {
 @test:Config {}
 function testForEachGenerateQuery() returns error? {
     // Smoke test: generateQuery must not error and must produce a LATERAL JOIN.
-    ViewDefinition viewDef = {
-        'resource: "Observation",
-        'select: [
-            {
-                forEach: "component",
-                column: [
-                    {name: "code", path: "code"},
-                    {name: "value", path: "valueString"}
-                ]
-            }
-        ]
+    json viewDef = {
+        "resource": "Observation",
+        "select": [{
+            "forEach": "component",
+            "column": [
+                {"name": "code", "path": "code"},
+                {"name": "value", "path": "valueString"}
+            ]
+        }]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -181,14 +173,12 @@ function testForEachGenerateQuery() returns error? {
 
 @test:Config {}
 function testForEachCustomTableAndColumn() returns error? {
-    ViewDefinition viewDef = {
-        'resource: "Observation",
-        'select: [
-            {
-                forEach: "component",
-                column: [{name: "code", path: "code"}]
-            }
-        ]
+    json viewDef = {
+        "resource": "Observation",
+        "select": [{
+            "forEach": "component",
+            "column": [{"name": "code", "path": "code"}]
+        }]
     };
     TranspilerContext ctx = {
         resourceAlias: "r",

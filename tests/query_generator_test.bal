@@ -177,13 +177,15 @@ function testTypecastString() returns error? {
 @test:Config {}
 function testUnionAllCombinations() returns error? {
     // One select with two unionAll branches → two SQL statements joined by UNION ALL.
-    ViewDefinitionSelect sel = {
-        unionAll: [
-            {column: [{name: "id", path: "id"}]},
-            {column: [{name: "id", path: "id"}]}
-        ]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{
+            "unionAll": [
+                {"column": [{"name": "id", "path": "id"}]},
+                {"column": [{"name": "id", "path": "id"}]}
+            ]
+        }]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
 
     string result = check generateQuery(viewDef, defaultCtx());
 
@@ -196,11 +198,11 @@ function testUnionAllCombinations() returns error? {
 @test:Config {}
 function testSingleCombinationNoUnionAll() returns error? {
     // Two selects without unionAll → one combination, no UNION ALL in output.
-    ViewDefinition viewDef = {
-        'resource: "Observation",
-        'select: [
-            {column: [{name: "id", path: "id"}]},
-            {column: [{name: "status", path: "status"}]}
+    json viewDef = {
+        "resource": "Observation",
+        "select": [
+            {"column": [{"name": "id", "path": "id"}]},
+            {"column": [{"name": "status", "path": "status"}]}
         ]
     };
 
@@ -244,13 +246,15 @@ function testCustomTableName() returns error? {
 
 @test:Config {}
 function testPerResourceTableNoTypeFilter() returns error? {
-    ViewDefinitionSelect sel = {
-        column: [
-            {name: "id", path: "id"},
-            {name: "birthDate", path: "birthDate"}
-        ]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{
+            "column": [
+                {"name": "id", "path": "id"},
+                {"name": "birthDate", "path": "birthDate"}
+            ]
+        }]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
 
     string result = check generateQuery(viewDef, perResourceCtx("Patient"));
 
@@ -261,13 +265,10 @@ function testPerResourceTableNoTypeFilter() returns error? {
 
 @test:Config {}
 function testCustomSchemaWithWhere() returns error? {
-    ViewDefinitionSelect sel = {
-        column: [{name: "id", path: "id"}]
-    };
-    ViewDefinition viewDef = {
-        'resource: "Patient",
-        'select: [sel],
-        'where: [{path: "active = true"}]
+    json viewDef = {
+        "resource": "Patient",
+        "select": [{"column": [{"name": "id", "path": "id"}]}],
+        "where": [{"path": "active = true"}]
     };
 
     string result = check generateQuery(viewDef, perResourceCtx("Patient"));
