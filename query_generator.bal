@@ -27,6 +27,8 @@
 # Generate a PostgreSQL query for a ViewDefinition.
 #
 # Expands all `unionAll` combinations and joins them with `UNION ALL`.
+# When any combination contains a `repeat` directive, the collected recursive
+# CTE definitions are hoisted to a single `WITH RECURSIVE` clause at the top.
 # The supplied `TranspilerContext` controls the table name, JSONB column, and
 # whether a `resource_type` filter is emitted in the WHERE clause.
 #
@@ -35,44 +37,68 @@
 # + return - The generated SQL string, or an error
 public isolated function generateQuery(json viewDef, TranspilerContext ctx) returns string|error {
     ViewDefinition typedViewDef = check viewDef.cloneWithType(ViewDefinition);
-    string[] statements = check generateAllSelectStatements(typedViewDef, ctx);
-    return string:'join("\nUNION ALL\n", ...statements);
+    [string[], string[]] result = check generateAllSelectStatements(typedViewDef, ctx);
+    string[] statements = result[0];
+    string[] cteDefs = result[1];
+
+    string body = string:'join("\nUNION ALL\n", ...statements);
+    if cteDefs.length() > 0 {
+        return "WITH RECURSIVE " + string:'join(",\n", ...cteDefs) + "\n" + body;
+    }
+    return body;
 }
 
-# Generate one SQL SELECT string per `SelectCombination`.
+# Generate one SQL SELECT string per `SelectCombination`, collecting any CTE
+# definitions contributed by repeat selects so they can be consolidated at the
+# query level.
 #
 # + viewDef - The typed ViewDefinition (already converted from JSON)
 # + ctx - The transpiler context
-# + return - One SQL string per combination, or an error
-isolated function generateAllSelectStatements(ViewDefinition viewDef, TranspilerContext ctx) returns string[]|error {
+# + return - `[statements, cteDefinitions]` across all combinations, or an error
+isolated function generateAllSelectStatements(
+        ViewDefinition viewDef,
+        TranspilerContext ctx) returns [string[], string[]]|error {
+
     SelectCombination[] combinations = expandCombinations(viewDef.'select);
     string[] statements = [];
+    string[] cteDefs = [];
+    int counter = 0;
     foreach SelectCombination combination in combinations {
-        statements.push(check generateStatementForCombination(combination, viewDef, ctx));
+        [string, string[], int] result =
+            check generateStatementForCombination(combination, viewDef, ctx, counter);
+        statements.push(result[0]);
+        foreach string d in result[1] {
+            cteDefs.push(d);
+        }
+        counter = result[2];
     }
-    return statements;
+    return [statements, cteDefs];
 }
 
 # Route a combination to the appropriate statement generator.
 #
-# Repeat takes precedence over forEach when both are present.
-# forEach and repeat return an error (not yet implemented).
+# Repeat takes precedence over forEach when both are present; forEach nested
+# inside a repeat is handled by `generateRepeatStatement`.
 #
 # + combination - The select combination to generate SQL for
 # + viewDef - The ViewDefinition
 # + ctx - The transpiler context
-# + return - The generated SQL string, or an error
+# + counter - The shared CTE alias counter (threaded across combinations)
+# + return - `[statement, cteDefinitions, nextCounter]`, or an error
 isolated function generateStatementForCombination(
         SelectCombination combination,
         ViewDefinition viewDef,
-        TranspilerContext ctx) returns string|error {
+        TranspilerContext ctx,
+        int counter) returns [string, string[], int]|error {
 
     if combinationHasRepeat(combination) {
-        return error("generateRepeatStatement not yet implemented");
+        return generateRepeatStatement(combination, viewDef, ctx, counter);
     } else if combinationHasForEach(combination) {
-        return generateForEachStatement(combination, viewDef, ctx);
+        string stmt = check generateForEachStatement(combination, viewDef, ctx);
+        return [stmt, [], counter];
     }
-    return generateSimpleStatement(combination, viewDef, ctx);
+    string stmt = check generateSimpleStatement(combination, viewDef, ctx);
+    return [stmt, [], counter];
 }
 
 # Generate a simple SELECT statement (no forEach, no repeat).
