@@ -22,7 +22,7 @@
 #
 # + selects - top-level select elements from the ViewDefinition
 # + return - every possible combination of union choices
-public isolated function expandCombinations(ViewDefinitionSelect[] selects) returns SelectCombination[] {
+isolated function expandCombinations(ViewDefinitionSelect[] selects) returns SelectCombination[] {
     SelectCombination[] combinations = [{selects: [], unionChoices: []}];
     foreach ViewDefinitionSelect sel in selects {
         combinations = expandSelectCombinations(sel, combinations);

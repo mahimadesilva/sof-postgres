@@ -10,6 +10,7 @@ function testForEachSimpleColumnSQL() returns error? {
     // column expression uses forEach_0.value as iteration context.
     json viewDef = {
         "resource": "Patient",
+        "status": "active",
         "select": [{
             "forEach": "name",
             "column": [{"name": "family", "path": "family"}]
@@ -38,6 +39,7 @@ function testForEachOrNullSQL() returns error? {
     // forEachOrNull: "name" → LEFT JOIN LATERAL … ON TRUE
     json viewDef = {
         "resource": "Patient",
+        "status": "active",
         "select": [{
             "forEachOrNull": "name",
             "column": [{"name": "family", "path": "family"}]
@@ -63,6 +65,7 @@ function testForEachWithNonForEachColumn() returns error? {
     // Both columns should appear in SELECT; only one LATERAL JOIN should be present.
     json viewDef = {
         "resource": "Patient",
+        "status": "active",
         "select": [
             {"column": [{"name": "id", "path": "id"}]},
             {
@@ -97,6 +100,7 @@ function testForEachNestedInNonForEach() returns error? {
     // contributes the family column via a LATERAL JOIN.
     json viewDef = {
         "resource": "Patient",
+        "status": "active",
         "select": [{
             "column": [{"name": "id", "path": "id"}],
             "select": [{
@@ -123,6 +127,7 @@ function testForEachMultiSegmentPath() returns error? {
     //   forEach_0_nest0 iterates over 'name', forEach_0 iterates over 'given'.
     json viewDef = {
         "resource": "Patient",
+        "status": "active",
         "select": [{
             "forEach": "name.given",
             "column": [{"name": "givenName", "path": "0"}]
@@ -151,6 +156,7 @@ function testForEachGenerateQuery() returns error? {
     // Smoke test: generateQuery must not error and must produce a LATERAL JOIN.
     json viewDef = {
         "resource": "Observation",
+        "status": "active",
         "select": [{
             "forEach": "component",
             "column": [
@@ -175,6 +181,7 @@ function testForEachGenerateQuery() returns error? {
 function testForEachCustomTableAndColumn() returns error? {
     json viewDef = {
         "resource": "Observation",
+        "status": "active",
         "select": [{
             "forEach": "component",
             "column": [{"name": "code", "path": "code"}]

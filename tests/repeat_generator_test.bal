@@ -11,6 +11,7 @@ function testRepeatSimpleSinglePath() returns error? {
     // INNER JOIN on ctid, and linkId column sourcing from repeat_0.item_json.
     json viewDef = {
         "resource": "Questionnaire",
+        "status": "active",
         "select": [{
             "repeat": ["item"],
             "column": [{"name": "linkId", "path": "linkId"}]
@@ -47,6 +48,7 @@ function testRepeatMultiplePaths() returns error? {
     // recursive member unions both paths with nested LATERAL JOINs for answer.item.
     json viewDef = {
         "resource": "Questionnaire",
+        "status": "active",
         "select": [{
             "repeat": ["item", "answer.item"],
             "column": [{"name": "linkId", "path": "linkId"}]
@@ -92,6 +94,7 @@ function testRepeatWithColumnFromOuterResource() returns error? {
     // from repeated items). Columns should use the correct contexts.
     json viewDef = {
         "resource": "Questionnaire",
+        "status": "active",
         "select": [
             {"column": [{"name": "id", "path": "id"}]},
             {"repeat": ["item"], "column": [{"name": "linkId", "path": "linkId"}]}
@@ -121,6 +124,7 @@ function testRepeatWithNestedForEach() returns error? {
     // the CTE's item_json (not r.resource).
     json viewDef = {
         "resource": "Questionnaire",
+        "status": "active",
         "select": [{
             "repeat": ["item"],
             "select": [{
@@ -158,6 +162,7 @@ function testRepeatWithUnionAll() returns error? {
     // generates its own SELECT but the repeat CTE is hoisted once at the top.
     json viewDef = {
         "resource": "Questionnaire",
+        "status": "active",
         "select": [{
             "unionAll": [
                 {"repeat": ["item"], "column": [{"name": "x", "path": "linkId"}]},
@@ -195,6 +200,7 @@ function testRepeatPrecedenceOverForEach() returns error? {
     // becomes a regular LATERAL JOIN sourcing from r.resource.
     json viewDef = {
         "resource": "Questionnaire",
+        "status": "active",
         "select": [
             {"repeat": ["item"], "column": [{"name": "linkId", "path": "linkId"}]},
             {"forEach": "name", "column": [{"name": "family", "path": "family"}]}

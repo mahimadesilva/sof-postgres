@@ -67,7 +67,7 @@ type RepeatEntry record {|
 # + ctx - The transpiler context
 # + startCounter - Starting counter for CTE alias generation (shared across combinations)
 # + return - `[statement, cteDefinitions, nextCounter]` or an error
-public isolated function generateRepeatStatement(
+isolated function generateRepeatStatement(
         SelectCombination combination,
         ViewDefinition viewDef,
         TranspilerContext ctx,
@@ -83,7 +83,7 @@ public isolated function generateRepeatStatement(
     string[] cteDefs = [];
     foreach RepeatEntry entry in repeatEntries {
         cteDefs.push(buildRepeatCteDefinition(
-            entry, ctx.resourceAlias, ctx.tableName, viewDef.'resource, ctx.filterByResourceType));
+                entry, ctx.resourceAlias, ctx.tableName, viewDef.'resource, ctx.filterByResourceType));
     }
 
     string joinClauses = buildRepeatJoinClauses(repeatEntries, ctx.resourceAlias);
@@ -96,9 +96,9 @@ public isolated function generateRepeatStatement(
     string lateralClauses = buildLateralJoinClauses(forEachEntries, topLevelForEach, combination);
 
     string selectClause = check generateRepeatSelectClause(
-        combination, ctx, repeatEntries, forEachEntries);
+            combination, ctx, repeatEntries, forEachEntries);
     string? whereClause = check buildWhereClause(
-        viewDef.'resource, ctx.resourceAlias, viewDef.'where, ctx);
+            viewDef.'resource, ctx.resourceAlias, viewDef.'where, ctx);
 
     string statement = selectClause + "\n" + fromClause + joinClauses + lateralClauses;
     if whereClause is string {
@@ -432,11 +432,11 @@ isolated function buildRepeatJoinClauses(RepeatEntry[] entries, string resourceA
 #
 # Rules (applied per top-level select in the combination):
 # - Top-level repeat select: collect its forEach children and build entries whose
-#   source is `<cteAlias>.item_json` so LATERAL JOINs unnest from within the CTE.
+# source is `<cteAlias>.item_json` so LATERAL JOINs unnest from within the CTE.
 # - Top-level forEach select: build entries starting from `r.resource` (same as
-#   standalone forEach). These live alongside the repeat in the same combination.
+# standalone forEach). These live alongside the repeat in the same combination.
 # - Plain top-level select: recurse into its nested selects; forEach children
-#   use `r.resource`, repeat children are already handled by the CTE.
+# use `r.resource`, repeat children are already handled by the CTE.
 # - Chosen unionAll branches follow the same classification as above.
 #
 # + combination - The select combination
@@ -459,7 +459,7 @@ isolated function buildForEachEntriesForRepeat(
 
         if isRepeatSelect(sel) {
             counter = collectForEachChildrenOfRepeat(
-                sel, repeatEntries, baseCtx, counter, entries, topLevelForEach);
+                    sel, repeatEntries, baseCtx, counter, entries, topLevelForEach);
         } else if sel.forEach is string || sel.forEachOrNull is string {
             [ForEachEntry[], int] r = buildForEachEntries(sel, baseSource, baseCtx, counter);
             foreach ForEachEntry e in r[0] {
@@ -469,7 +469,7 @@ isolated function buildForEachEntriesForRepeat(
             counter = r[1];
         } else {
             counter = collectForEachFromPlainSelect(
-                sel, repeatEntries, baseCtx, baseSource, counter, entries, topLevelForEach);
+                    sel, repeatEntries, baseCtx, baseSource, counter, entries, topLevelForEach);
         }
 
         ViewDefinitionSelect[]? unionAll = sel.unionAll;
@@ -477,7 +477,7 @@ isolated function buildForEachEntriesForRepeat(
             ViewDefinitionSelect branch = unionAll[unionChoice];
             if isRepeatSelect(branch) {
                 counter = collectForEachChildrenOfRepeat(
-                    branch, repeatEntries, baseCtx, counter, entries, topLevelForEach);
+                        branch, repeatEntries, baseCtx, counter, entries, topLevelForEach);
             } else if branch.forEach is string || branch.forEachOrNull is string {
                 [ForEachEntry[], int] r = buildForEachEntries(branch, baseSource, baseCtx, counter);
                 foreach ForEachEntry e in r[0] {
@@ -487,7 +487,7 @@ isolated function buildForEachEntriesForRepeat(
                 counter = r[1];
             } else {
                 counter = collectForEachFromPlainSelect(
-                    branch, repeatEntries, baseCtx, baseSource, counter, entries, topLevelForEach);
+                        branch, repeatEntries, baseCtx, baseSource, counter, entries, topLevelForEach);
             }
         }
     }
@@ -570,7 +570,7 @@ isolated function collectForEachFromPlainSelect(
                 counter = r[1];
             } else if isRepeatSelect(ns) {
                 counter = collectForEachChildrenOfRepeat(
-                    ns, repeatEntries, baseCtx, counter, entries, topLevelForEach);
+                        ns, repeatEntries, baseCtx, counter, entries, topLevelForEach);
             }
         }
     }
@@ -600,7 +600,7 @@ isolated function getCteSourceForSelect(ViewDefinitionSelect sel, RepeatEntry[] 
 # For each select in the combination, uses the appropriate context:
 # - forEach context (`forEach_N.value`) for columns directly under a forEach select.
 # - repeat context (`<cte>.item_json`) for columns under the repeat and its
-#   non-forEach descendants.
+# non-forEach descendants.
 # - base context for columns under top-level non-repeat, non-forEach selects.
 #
 # + combination - The select combination
@@ -660,11 +660,11 @@ isolated function generateRepeatSelectClause(
 # + columnParts - Mutable list to which `expr AS "name"` strings are appended
 # + return - `()` on success, or an error from `generateColumnExpression`
 isolated function appendColumns(
-        ViewDefinitionColumn[]? columns,
+        ViewDefinitionSelectColumn[]? columns,
         TranspilerContext ctx,
         string[] columnParts) returns error? {
-    if columns is ViewDefinitionColumn[] {
-        foreach ViewDefinitionColumn col in columns {
+    if columns is ViewDefinitionSelectColumn[] {
+        foreach ViewDefinitionSelectColumn col in columns {
             string expr = check generateColumnExpression(col, ctx);
             columnParts.push(expr + " AS \"" + col.name + "\"");
         }

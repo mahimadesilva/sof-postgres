@@ -35,7 +35,8 @@ function testSimpleSingleColumn() returns error? {
     };
     ViewDefinition viewDef = {
         'resource: "Patient",
-        'select: [sel]
+        'select: [sel],
+        status: CODE_VIEWDEFINITION_STATUS_ACTIVE
     };
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
@@ -57,7 +58,8 @@ function testSimpleMultipleColumns() returns error? {
     };
     ViewDefinition viewDef = {
         'resource: "Patient",
-        'select: [sel]
+        'select: [sel],
+        status: CODE_VIEWDEFINITION_STATUS_ACTIVE
     };
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
@@ -83,7 +85,8 @@ function testSimpleNestedSelect() returns error? {
     };
     ViewDefinition viewDef = {
         'resource: "Patient",
-        'select: [outerSel]
+        'select: [outerSel],
+        status: CODE_VIEWDEFINITION_STATUS_ACTIVE
     };
 
     string result = check generateSimpleStatement(simpleCombination(outerSel), viewDef, defaultCtx());
@@ -106,7 +109,8 @@ function testSimpleViewWhere() returns error? {
     ViewDefinition viewDef = {
         'resource: "Patient",
         'select: [sel],
-        'where: [{path: "id = 'test-id'"}]
+        'where: [{path: "id = 'test-id'"}],
+        status: CODE_VIEWDEFINITION_STATUS_ACTIVE
     };
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
@@ -120,7 +124,7 @@ function testSimpleViewWhere() returns error? {
 function testSimpleNoColumns() returns error? {
     // A combination with no columns should fall back to SELECT *.
     ViewDefinitionSelect sel = {};
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel], status: CODE_VIEWDEFINITION_STATUS_ACTIVE};
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
 
@@ -136,7 +140,7 @@ function testTypecastInteger() returns error? {
     ViewDefinitionSelect sel = {
         column: [{name: "count", path: "someInt", 'type: "integer"}]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel], status: CODE_VIEWDEFINITION_STATUS_ACTIVE};
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
 
@@ -148,7 +152,7 @@ function testTypecastBoolean() returns error? {
     ViewDefinitionSelect sel = {
         column: [{name: "active", path: "active", 'type: "boolean"}]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel], status: CODE_VIEWDEFINITION_STATUS_ACTIVE};
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
 
@@ -161,7 +165,7 @@ function testTypecastString() returns error? {
     ViewDefinitionSelect sel = {
         column: [{name: "gender", path: "gender", 'type: "string"}]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel], status: CODE_VIEWDEFINITION_STATUS_ACTIVE};
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, defaultCtx());
 
@@ -179,12 +183,15 @@ function testUnionAllCombinations() returns error? {
     // One select with two unionAll branches → two SQL statements joined by UNION ALL.
     json viewDef = {
         "resource": "Patient",
-        "select": [{
-            "unionAll": [
-                {"column": [{"name": "id", "path": "id"}]},
-                {"column": [{"name": "id", "path": "id"}]}
-            ]
-        }]
+        "status": "active",
+        "select": [
+            {
+                "unionAll": [
+                    {"column": [{"name": "id", "path": "id"}]},
+                    {"column": [{"name": "id", "path": "id"}]}
+                ]
+            }
+        ]
     };
 
     string result = check generateQuery(viewDef, defaultCtx());
@@ -200,6 +207,7 @@ function testSingleCombinationNoUnionAll() returns error? {
     // Two selects without unionAll → one combination, no UNION ALL in output.
     json viewDef = {
         "resource": "Observation",
+        "status": "active",
         "select": [
             {"column": [{"name": "id", "path": "id"}]},
             {"column": [{"name": "status", "path": "status"}]}
@@ -222,7 +230,7 @@ function testCustomResourceColumn() returns error? {
     ViewDefinitionSelect sel = {
         column: [{name: "id", path: "id"}]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel], status: CODE_VIEWDEFINITION_STATUS_ACTIVE};
     TranspilerContext ctx = {resourceAlias: "r", resourceColumn: "RESOURCE_JSON", tableName: "fhir_resources"};
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, ctx);
@@ -236,7 +244,7 @@ function testCustomTableName() returns error? {
     ViewDefinitionSelect sel = {
         column: [{name: "id", path: "id"}]
     };
-    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel]};
+    ViewDefinition viewDef = {'resource: "Patient", 'select: [sel], status: CODE_VIEWDEFINITION_STATUS_ACTIVE};
     TranspilerContext ctx = {resourceAlias: "r", resourceColumn: "resource", tableName: "PatientTable"};
 
     string result = check generateSimpleStatement(simpleCombination(sel), viewDef, ctx);
@@ -248,12 +256,15 @@ function testCustomTableName() returns error? {
 function testPerResourceTableNoTypeFilter() returns error? {
     json viewDef = {
         "resource": "Patient",
-        "select": [{
-            "column": [
-                {"name": "id", "path": "id"},
-                {"name": "birthDate", "path": "birthDate"}
-            ]
-        }]
+        "status": "active",
+        "select": [
+            {
+                "column": [
+                    {"name": "id", "path": "id"},
+                    {"name": "birthDate", "path": "birthDate"}
+                ]
+            }
+        ]
     };
 
     string result = check generateQuery(viewDef, perResourceCtx("Patient"));
@@ -267,6 +278,7 @@ function testPerResourceTableNoTypeFilter() returns error? {
 function testCustomSchemaWithWhere() returns error? {
     json viewDef = {
         "resource": "Patient",
+        "status": "active",
         "select": [{"column": [{"name": "id", "path": "id"}]}],
         "where": [{"path": "active = true"}]
     };

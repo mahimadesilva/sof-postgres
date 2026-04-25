@@ -54,7 +54,7 @@ type ForEachEntry record {|
 # + viewDef - The ViewDefinition
 # + ctx - The transpiler context (base resource alias and column)
 # + return - The generated SQL string, or an error
-public isolated function generateForEachStatement(
+isolated function generateForEachStatement(
         SelectCombination combination,
         ViewDefinition viewDef,
         TranspilerContext ctx) returns string|error {
@@ -119,7 +119,7 @@ isolated function buildForEachContextMap(
 # A forEach select is considered "top-level" when:
 # - It directly carries forEach / forEachOrNull, OR
 # - It is a non-forEach select that contains forEach in its nested `select` array
-#   (in which case the nested forEach selects are the top-level ones).
+# (in which case the nested forEach selects are the top-level ones).
 # Also checks the chosen unionAll branch for each select element.
 #
 # + selects - Top-level select elements to scan
@@ -215,7 +215,7 @@ isolated function buildForEachEntries(
         foreach ViewDefinitionSelect ns in nestedSelects {
             if ns.forEach is string || ns.forEachOrNull is string {
                 [ForEachEntry[], int] nested = buildForEachEntries(
-                    ns, applyAlias + ".value", forEachCtx, counter);
+                        ns, applyAlias + ".value", forEachCtx, counter);
                 foreach ForEachEntry e in nested[0] {
                     entries.push(e);
                 }
@@ -230,7 +230,7 @@ isolated function buildForEachEntries(
         foreach ViewDefinitionSelect uo in unionAll {
             if uo.forEach is string || uo.forEachOrNull is string {
                 [ForEachEntry[], int] union = buildForEachEntries(
-                    uo, applyAlias + ".value", forEachCtx, counter);
+                        uo, applyAlias + ".value", forEachCtx, counter);
                 foreach ForEachEntry e in union[0] {
                     entries.push(e);
                 }
@@ -449,9 +449,9 @@ isolated function collectForEachSelectColumns(
     string[] parts = [];
 
     // Direct columns use the forEach context.
-    ViewDefinitionColumn[]? columns = sel.column;
-    if columns is ViewDefinitionColumn[] {
-        foreach ViewDefinitionColumn col in columns {
+    ViewDefinitionSelectColumn[]? columns = sel.column;
+    if columns is ViewDefinitionSelectColumn[] {
+        foreach ViewDefinitionSelectColumn col in columns {
             string expr = check generateColumnExpression(col, forEachCtx);
             parts.push(expr + " AS \"" + col.name + "\"");
         }
@@ -465,9 +465,9 @@ isolated function collectForEachSelectColumns(
                 // Nested forEach: use its own context.
                 TranspilerContext? nestedCtx = lookupForEachContext(contextMap, ns);
                 if nestedCtx is TranspilerContext {
-                    ViewDefinitionColumn[]? nestedCols = ns.column;
-                    if nestedCols is ViewDefinitionColumn[] {
-                        foreach ViewDefinitionColumn col in nestedCols {
+                    ViewDefinitionSelectColumn[]? nestedCols = ns.column;
+                    if nestedCols is ViewDefinitionSelectColumn[] {
+                        foreach ViewDefinitionSelectColumn col in nestedCols {
                             string expr = check generateColumnExpression(col, nestedCtx);
                             parts.push(expr + " AS \"" + col.name + "\"");
                         }
@@ -475,9 +475,9 @@ isolated function collectForEachSelectColumns(
                 }
             } else {
                 // Non-forEach nested: inherit parent forEach context.
-                ViewDefinitionColumn[]? nestedCols = ns.column;
-                if nestedCols is ViewDefinitionColumn[] {
-                    foreach ViewDefinitionColumn col in nestedCols {
+                ViewDefinitionSelectColumn[]? nestedCols = ns.column;
+                if nestedCols is ViewDefinitionSelectColumn[] {
+                    foreach ViewDefinitionSelectColumn col in nestedCols {
                         string expr = check generateColumnExpression(col, forEachCtx);
                         parts.push(expr + " AS \"" + col.name + "\"");
                     }
@@ -492,9 +492,9 @@ isolated function collectForEachSelectColumns(
         ViewDefinitionSelect branch = unionAll[unionChoice];
         TranspilerContext? branchCtx = lookupForEachContext(contextMap, branch);
         TranspilerContext effectiveCtx = branchCtx is TranspilerContext ? branchCtx : forEachCtx;
-        ViewDefinitionColumn[]? branchCols = branch.column;
-        if branchCols is ViewDefinitionColumn[] {
-            foreach ViewDefinitionColumn col in branchCols {
+        ViewDefinitionSelectColumn[]? branchCols = branch.column;
+        if branchCols is ViewDefinitionSelectColumn[] {
+            foreach ViewDefinitionSelectColumn col in branchCols {
                 string expr = check generateColumnExpression(col, effectiveCtx);
                 parts.push(expr + " AS \"" + col.name + "\"");
             }
@@ -524,9 +524,9 @@ isolated function collectNonForEachSelectColumns(
     string[] parts = [];
 
     // Direct columns use the base context.
-    ViewDefinitionColumn[]? columns = sel.column;
-    if columns is ViewDefinitionColumn[] {
-        foreach ViewDefinitionColumn col in columns {
+    ViewDefinitionSelectColumn[]? columns = sel.column;
+    if columns is ViewDefinitionSelectColumn[] {
+        foreach ViewDefinitionSelectColumn col in columns {
             string expr = check generateColumnExpression(col, ctx);
             parts.push(expr + " AS \"" + col.name + "\"");
         }
@@ -540,9 +540,9 @@ isolated function collectNonForEachSelectColumns(
                 // Nested forEach: use its forEach context.
                 TranspilerContext? forEachCtx = lookupForEachContext(contextMap, ns);
                 if forEachCtx is TranspilerContext {
-                    ViewDefinitionColumn[]? nestedCols = ns.column;
-                    if nestedCols is ViewDefinitionColumn[] {
-                        foreach ViewDefinitionColumn col in nestedCols {
+                    ViewDefinitionSelectColumn[]? nestedCols = ns.column;
+                    if nestedCols is ViewDefinitionSelectColumn[] {
+                        foreach ViewDefinitionSelectColumn col in nestedCols {
                             string expr = check generateColumnExpression(col, forEachCtx);
                             parts.push(expr + " AS \"" + col.name + "\"");
                         }
@@ -550,9 +550,9 @@ isolated function collectNonForEachSelectColumns(
                 }
             } else {
                 // Non-forEach nested: use base context.
-                ViewDefinitionColumn[]? nestedCols = ns.column;
-                if nestedCols is ViewDefinitionColumn[] {
-                    foreach ViewDefinitionColumn col in nestedCols {
+                ViewDefinitionSelectColumn[]? nestedCols = ns.column;
+                if nestedCols is ViewDefinitionSelectColumn[] {
+                    foreach ViewDefinitionSelectColumn col in nestedCols {
                         string expr = check generateColumnExpression(col, ctx);
                         parts.push(expr + " AS \"" + col.name + "\"");
                     }
@@ -567,9 +567,9 @@ isolated function collectNonForEachSelectColumns(
         ViewDefinitionSelect branch = unionAll[unionChoice];
         TranspilerContext? branchCtx = lookupForEachContext(contextMap, branch);
         TranspilerContext effectiveCtx = branchCtx is TranspilerContext ? branchCtx : ctx;
-        ViewDefinitionColumn[]? branchCols = branch.column;
-        if branchCols is ViewDefinitionColumn[] {
-            foreach ViewDefinitionColumn col in branchCols {
+        ViewDefinitionSelectColumn[]? branchCols = branch.column;
+        if branchCols is ViewDefinitionSelectColumn[] {
+            foreach ViewDefinitionSelectColumn col in branchCols {
                 string expr = check generateColumnExpression(col, effectiveCtx);
                 parts.push(expr + " AS \"" + col.name + "\"");
             }

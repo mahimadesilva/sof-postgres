@@ -20,6 +20,17 @@
 // Generates PostgreSQL SELECT statements from ViewDefinition structures.
 // Builds on top of expandCombinations() and the FHIRPath transpiler.
 
+# The result of expanding a single union combination from a ViewDefinition.
+# `selects` holds the select elements contributing to this combination.
+# `unionChoices` holds the union branch index chosen for each select element
+# (-1 means the select had no unionAll; >= 0 is the index into its unionAll array).
+type SelectCombination record {|
+    # Select elements that contribute to this combination
+    ViewDefinitionSelect[] selects;
+    # Parallel array of union branch indices (-1 = no union chosen)
+    int[] unionChoices;
+|};
+
 // ========================================
 // PUBLIC API
 // ========================================
@@ -155,9 +166,9 @@ isolated function generateSimpleSelectClause(SelectCombination combination, Tran
         ViewDefinitionSelect[]? unionAll = sel.unionAll;
         if unionAll is ViewDefinitionSelect[] && unionChoice >= 0 && unionChoice < unionAll.length() {
             ViewDefinitionSelect chosenBranch = unionAll[unionChoice];
-            ViewDefinitionColumn[]? branchCols = chosenBranch.column;
-            if branchCols is ViewDefinitionColumn[] {
-                foreach ViewDefinitionColumn col in branchCols {
+            ViewDefinitionSelectColumn[]? branchCols = chosenBranch.column;
+            if branchCols is ViewDefinitionSelectColumn[] {
+                foreach ViewDefinitionSelectColumn col in branchCols {
                     string expr = check generateColumnExpression(col, ctx);
                     columnParts.push(expr + " AS \"" + col.name + "\"");
                 }
@@ -186,9 +197,9 @@ isolated function collectSelectColumns(ViewDefinitionSelect sel, TranspilerConte
 
     string[] parts = [];
 
-    ViewDefinitionColumn[]? columns = sel.column;
-    if columns is ViewDefinitionColumn[] {
-        foreach ViewDefinitionColumn col in columns {
+    ViewDefinitionSelectColumn[]? columns = sel.column;
+    if columns is ViewDefinitionSelectColumn[] {
+        foreach ViewDefinitionSelectColumn col in columns {
             string expr = check generateColumnExpression(col, ctx);
             parts.push(expr + " AS \"" + col.name + "\"");
         }
@@ -216,7 +227,7 @@ isolated function collectSelectColumns(ViewDefinitionSelect sel, TranspilerConte
 # + col - The column definition
 # + ctx - The transpiler context
 # + return - The SQL expression string, or an error
-isolated function generateColumnExpression(ViewDefinitionColumn col, TranspilerContext ctx) returns string|error {
+isolated function generateColumnExpression(ViewDefinitionSelectColumn col, TranspilerContext ctx) returns string|error {
     string expression = check transpile(col.path, ctx);
 
     string? fhirType = col.'type;
@@ -224,11 +235,11 @@ isolated function generateColumnExpression(ViewDefinitionColumn col, TranspilerC
         return expression;
     }
 
-    // Convert ViewDefinitionColumnTag[] to ColumnTag[] for inferSqlType.
+    // Convert ViewDefinitionSelectColumnTag[] to ColumnTag[] for inferSqlType.
     ColumnTag[]? colTags = ();
-    ViewDefinitionColumnTag[]? rawTags = col.tag;
-    if rawTags is ViewDefinitionColumnTag[] {
-        colTags = from ViewDefinitionColumnTag t in rawTags
+    ViewDefinitionSelectColumnTag[]? rawTags = col.tag;
+    if rawTags is ViewDefinitionSelectColumnTag[] {
+        colTags = from ViewDefinitionSelectColumnTag t in rawTags
             select {name: t.name, value: t.value};
     }
 
