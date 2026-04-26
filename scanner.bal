@@ -27,7 +27,7 @@ type ScannerError record {|
 
 # Public error type for FHIRPath scanner errors.
 # This error is raised when the scanner encounters invalid syntax.
-public type FhirpathScannerError distinct error<ScannerError>;
+public type FHIRPathScannerError distinct error<ScannerError>;
 
 // ========================================
 // STATE MANAGEMENT
@@ -78,7 +78,7 @@ isolated function createScannerState(string sourceCode) returns ScannerState {
 #
 # + sourceCode - The FHIRPath expression to tokenize
 # + return - An array of tokens on success, or a FhirpathScannerError if scanning fails
-isolated function scanTokens(string sourceCode) returns FhirpathScannerError|FhirPathToken[] {
+isolated function scanTokens(string sourceCode) returns FHIRPathScannerError|FhirPathToken[] {
     ScannerState state = createScannerState(sourceCode);
 
     while !isScannerAtEnd(state) {
@@ -99,7 +99,7 @@ isolated function scanTokens(string sourceCode) returns FhirpathScannerError|Fhi
 #
 # + state - The current scanner state
 # + return - Updated scanner state on success, or a FhirpathScannerError for unexpected characters
-isolated function scanToken(ScannerState state) returns FhirpathScannerError|ScannerState {
+isolated function scanToken(ScannerState state) returns FHIRPathScannerError|ScannerState {
     [string, ScannerState] result = advanceScanner(state);
     string c = result[0];
     ScannerState newState = result[1];
@@ -123,7 +123,7 @@ isolated function scanToken(ScannerState state) returns FhirpathScannerError|Sca
         if matchResult[0] {
             return addToken(matchResult[1], BANG_EQUAL);
         } else {
-            return error FhirpathScannerError("Unexpected character '!'.",
+            return error FHIRPathScannerError("Unexpected character '!'.",
                 position = newState.current);
         }
     } else if c == " " || c == "\r" || c == "\t" {
@@ -141,7 +141,7 @@ isolated function scanToken(ScannerState state) returns FhirpathScannerError|Sca
     } else if isAlpha(c) {
         return scanIdentifier(newState);
     } else {
-        return error FhirpathScannerError("Unexpected character.",
+        return error FHIRPathScannerError("Unexpected character.",
             position = newState.current);
     }
 }
@@ -170,7 +170,7 @@ isolated function scanIdentifier(ScannerState state) returns ScannerState {
 #
 # + state - The current scanner state (positioned after the opening backtick)
 # + return - Updated scanner state with the delimited identifier token, or an error if unterminated
-isolated function scanDelimitedIdentifier(ScannerState state) returns FhirpathScannerError|ScannerState {
+isolated function scanDelimitedIdentifier(ScannerState state) returns FHIRPathScannerError|ScannerState {
     ScannerState newState = state;
     while peekScanner(newState) != "`" && !isScannerAtEnd(newState) {
         // Handle escape sequences
@@ -188,7 +188,7 @@ isolated function scanDelimitedIdentifier(ScannerState state) returns FhirpathSc
     }
 
     if isScannerAtEnd(newState) {
-        return error FhirpathScannerError("Unterminated delimited identifier.",
+        return error FHIRPathScannerError("Unterminated delimited identifier.",
             position = newState.current);
     }
 
@@ -238,7 +238,7 @@ isolated function scanNumber(ScannerState state) returns ScannerState {
 #
 # + state - The current scanner state (positioned after the opening quote)
 # + return - Updated scanner state with the string token, or an error if unterminated
-isolated function scanString(ScannerState state) returns FhirpathScannerError|ScannerState {
+isolated function scanString(ScannerState state) returns FHIRPathScannerError|ScannerState {
     ScannerState newState = state;
     while peekScanner(newState) != "'" && !isScannerAtEnd(newState) {
         // Handle escape sequences
@@ -256,7 +256,7 @@ isolated function scanString(ScannerState state) returns FhirpathScannerError|Sc
     }
 
     if isScannerAtEnd(newState) {
-        return error FhirpathScannerError("Unterminated string.",
+        return error FHIRPathScannerError("Unterminated string.",
             position = newState.current);
     }
 

@@ -15,7 +15,7 @@
 // under the License.
 
 // TokenType enum
-public enum TokenType {
+enum TokenType {
     // Single-character tokens
     LEFT_PAREN, // (
     RIGHT_PAREN, // )

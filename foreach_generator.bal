@@ -40,7 +40,7 @@ type ForEachEntry record {|
 |};
 
 // ========================================
-// PUBLIC API
+//  API
 // ========================================
 
 # Generate a SELECT statement that iterates over FHIR arrays using LATERAL JOINs.

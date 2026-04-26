@@ -53,7 +53,7 @@ type RepeatEntry record {|
 |};
 
 // ========================================
-// PUBLIC API
+// API
 // ========================================
 
 # Generate a SELECT statement using a recursive CTE for repeat traversal.

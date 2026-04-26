@@ -78,7 +78,7 @@ isolated function createParserState(FhirPathToken[] tokens) returns ParserState 
 #
 # + tokens - The list of tokens produced by the scanner
 # + return - An expression AST on success, or a FhirpathParserError if parsing fails
-public isolated function parse(FhirPathToken[] tokens) returns FhirpathParserError|Expr? {
+isolated function parse(FhirPathToken[] tokens) returns FhirpathParserError|Expr? {
     ParserState state = createParserState(tokens);
     ParseResult result = check Expression(state);
     Expr? expr = result[0];

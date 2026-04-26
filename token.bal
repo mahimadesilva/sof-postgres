@@ -29,7 +29,7 @@
 # + lexeme - The actual text from the source code that forms this token
 # + literal - The interpreted value for literals (e.g., numeric value, string content), null for non-literals
 # + position - The position in the source code where this token starts (zero-based index)
-public type FhirPathToken record {|
+type FhirPathToken record {|
     TokenType tokenType;
     string lexeme;
     anydata? literal;

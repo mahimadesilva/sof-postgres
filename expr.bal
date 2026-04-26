@@ -26,7 +26,7 @@
 
 # Base expression type representing any FHIRPath expression node in the AST.
 # This is a union of all possible expression types.
-public type Expr BinaryExpr|LiteralExpr|IdentifierExpr|FunctionExpr|MemberAccessExpr|IndexerExpr;
+type Expr BinaryExpr|LiteralExpr|IdentifierExpr|FunctionExpr|MemberAccessExpr|IndexerExpr;
 
 // ========================================
 // EXPRESSION NODE TYPES
@@ -39,7 +39,7 @@ public type Expr BinaryExpr|LiteralExpr|IdentifierExpr|FunctionExpr|MemberAccess
 # + left - The left operand expression
 # + operator - The operator token (contains the operator type and position)
 # + right - The right operand expression
-public type BinaryExpr record {|
+type BinaryExpr record {|
     "Binary" kind;
     Expr left;
     FhirPathToken operator;
@@ -50,7 +50,7 @@ public type BinaryExpr record {|
 #
 # + kind - The expression kind discriminator (always "Literal")
 # + value - The literal value (number, string, boolean, or nil)
-public type LiteralExpr record {|
+type LiteralExpr record {|
     "Literal" kind;
     anydata? value;
 |};
@@ -60,7 +60,7 @@ public type LiteralExpr record {|
 #
 # + kind - The expression kind discriminator (always "Identifier")
 # + name - The identifier name (can be simple or delimited)
-public type IdentifierExpr record {|
+type IdentifierExpr record {|
     "Identifier" kind;
     string name;
 |};
@@ -71,7 +71,7 @@ public type IdentifierExpr record {|
 # + name - The function name
 # + target - The expression the function is called on (e.g., Patient in Patient.where()), or nil for standalone calls
 # + params - Array of argument expressions passed to the function
-public type FunctionExpr record {|
+type FunctionExpr record {|
     "Function" kind;
     string name;
     Expr? target; // The expression the function is called on (e.g., Patient in Patient.where())
@@ -84,7 +84,7 @@ public type FunctionExpr record {|
 # + kind - The expression kind discriminator (always "MemberAccess")
 # + target - The expression being accessed (left side of the dot)
 # + member - The member/property name being accessed (right side of the dot)
-public type MemberAccessExpr record {|
+type MemberAccessExpr record {|
     "MemberAccess" kind;
     Expr target;
     string member;
@@ -96,7 +96,7 @@ public type MemberAccessExpr record {|
 # + kind - The expression kind discriminator (always "Indexer")
 # + target - The expression being indexed (the collection)
 # + index - The index expression (typically a literal number)
-public type IndexerExpr record {|
+type IndexerExpr record {|
     "Indexer" kind;
     Expr target;
     Expr index;
