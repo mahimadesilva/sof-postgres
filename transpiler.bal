@@ -20,7 +20,6 @@
 // Converts FHIRPath expressions to PostgreSQL SQL using JSONB functions.
 // Walks the AST produced by parser.bal and generates SQL expressions.
 
-
 // ========================================
 // TYPE DEFINITIONS
 // ========================================
@@ -31,7 +30,7 @@
 # + resourceColumn - The column name holding the JSONB resource data (e.g., "resource" or "RESOURCE_JSON")
 # + tableName - The SQL table name to query (e.g., "fhir_resources" or "PatientTable")
 # + filterByResourceType - When `true`, adds `WHERE alias.resource_type = '<type>'`.
-#                          Set to `false` for per-resource-type tables that have no discriminator column.
+# Set to `false` for per-resource-type tables that have no discriminator column.
 # + constants - External constants (%name references in FHIRPath)
 # + iterationContext - Current iteration context expression (e.g., "whereItem.value")
 # + currentForEachAlias - forEach alias (e.g., "forEach_0")
@@ -55,26 +54,47 @@ public type TranspilerContext record {|
 #
 # + name - The tag name (e.g., "pg/type", "ansi/type")
 # + value - The tag value (e.g., "TEXT", "INTEGER")
-public type ColumnTag record {|
+type ColumnTag record {|
     string name;
     string value;
 |};
 
 # Error type for transpiler failures.
-public type TranspilerError distinct error;
+public type FhirPathPostgresTranspilerError distinct error;
 
 // ========================================
 // CONSTANTS
 // ========================================
 
 final string[] & readonly KNOWN_ARRAY_FIELDS = [
-    "name", "given", "telecom", "address", "line", "identifier",
-    "extension", "contact", "output", "item", "udiCarrier", "coding", "component"
+    "name",
+    "given",
+    "telecom",
+    "address",
+    "line",
+    "identifier",
+    "extension",
+    "contact",
+    "output",
+    "item",
+    "udiCarrier",
+    "coding",
+    "component"
 ];
 
 final string[] & readonly ALWAYS_ARRAY_FIELDS = [
-    "given", "telecom", "address", "line", "identifier",
-    "extension", "contact", "output", "item", "udiCarrier", "coding", "component"
+    "given",
+    "telecom",
+    "address",
+    "line",
+    "identifier",
+    "extension",
+    "contact",
+    "output",
+    "item",
+    "udiCarrier",
+    "coding",
+    "component"
 ];
 
 final string[] & readonly POLYMORPHIC_FIELDS = ["value", "onset", "effective", "deceased", "identified"];
@@ -143,7 +163,7 @@ public isolated function transpile(string expression, TranspilerContext context)
     FhirPathToken[] tokens = check scanTokens(expression);
     Expr? ast = check parse(tokens);
     if ast is () {
-        return error TranspilerError("Empty expression");
+        return error FhirPathPostgresTranspilerError("Empty expression");
     }
     return walkExpr(ast, context);
 }
@@ -153,7 +173,7 @@ public isolated function transpile(string expression, TranspilerContext context)
 # + fhirType - The FHIR type name (e.g., "string", "integer")
 # + tags - Optional column tags for type overrides
 # + return - The PostgreSQL type string
-public isolated function inferSqlType(string? fhirType = (), ColumnTag[]? tags = ()) returns string {
+isolated function inferSqlType(string? fhirType = (), ColumnTag[]? tags = ()) returns string {
     if tags is ColumnTag[] {
         // Check for pg/type tag first (highest precedence)
         string? pgType = getTagValue(tags, "pg/type");
@@ -268,7 +288,7 @@ isolated function walkBinary(BinaryExpr expr, TranspilerContext ctx) returns str
     } else if op == XOR {
         return string `((${left} AND NOT ${right}) OR (NOT ${left} AND ${right}))`;
     }
-    return error TranspilerError(string `Unsupported binary operator: ${expr.operator.lexeme}`);
+    return error FhirPathPostgresTranspilerError(string `Unsupported binary operator: ${expr.operator.lexeme}`);
 }
 
 # Walks a member access expression (e.g., Patient.name, name.family).
@@ -376,7 +396,7 @@ isolated function walkFunction(FunctionExpr expr, TranspilerContext ctx) returns
         return handleBoundary(base, ctx);
     }
 
-    return error TranspilerError(string `Unsupported FHIRPath function: ${name}`);
+    return error FhirPathPostgresTranspilerError(string `Unsupported FHIRPath function: ${name}`);
 }
 
 // ========================================
@@ -392,7 +412,7 @@ isolated function walkFunction(FunctionExpr expr, TranspilerContext ctx) returns
 # + return - The SQL subquery or an error
 isolated function handleWhere(string? base, Expr[] params, TranspilerContext ctx) returns string|error {
     if params.length() != 1 {
-        return error TranspilerError("where() function requires exactly one argument");
+        return error FhirPathPostgresTranspilerError("where() function requires exactly one argument");
     }
 
     Expr filterExpr = params[0];
@@ -644,7 +664,7 @@ isolated function handleJoin(string? base, string[] args, TranspilerContext ctx)
 # + return - The selected expression or an error
 isolated function handleSelect(string? base, string[] args, TranspilerContext ctx) returns string|error {
     if args.length() != 1 {
-        return error TranspilerError("select() function requires exactly one argument");
+        return error FhirPathPostgresTranspilerError("select() function requires exactly one argument");
     }
     return args[0];
 }
@@ -666,10 +686,10 @@ isolated function handleGetResourceKey(TranspilerContext ctx) returns string {
 # + return - The SQL expression with the typed field name or an error
 isolated function handleOfType(string? base, Expr[] params, TranspilerContext ctx) returns string|error {
     if params.length() != 1 {
-        return error TranspilerError("ofType() function requires exactly one argument");
+        return error FhirPathPostgresTranspilerError("ofType() function requires exactly one argument");
     }
     if base is () {
-        return error TranspilerError("ofType() requires a target expression");
+        return error FhirPathPostgresTranspilerError("ofType() requires a target expression");
     }
 
     // Get the raw type name from the parameter (should be an identifier)
@@ -692,7 +712,7 @@ isolated function handleOfType(string? base, Expr[] params, TranspilerContext ct
 # + return - The SQL subquery filtering extensions by URL or an error
 isolated function handleExtension(string? base, Expr[] params, TranspilerContext ctx) returns string|error {
     if params.length() != 1 {
-        return error TranspilerError("extension() function requires exactly one argument");
+        return error FhirPathPostgresTranspilerError("extension() function requires exactly one argument");
     }
 
     string extensionUrl = check walkExpr(params[0], ctx);
@@ -742,7 +762,7 @@ isolated function handleGetReferenceKey(string? base, Expr[] params, TranspilerC
     } else if ctx.iterationContext is string {
         refSource = <string>ctx.iterationContext;
     } else {
-        return error TranspilerError("getReferenceKey() requires a Reference object context");
+        return error FhirPathPostgresTranspilerError("getReferenceKey() requires a Reference object context");
     }
 
     // Extract .reference field
@@ -1147,8 +1167,8 @@ isolated function getTypeSuffix(string typeName) returns string {
 isolated function isResourceRootLevel(string base, TranspilerContext ctx) returns boolean {
     string fullResource = string `${ctx.resourceAlias}.${ctx.resourceColumn}`;
     return base == fullResource ||
-           base == ctx.resourceAlias ||
-           (!base.includes("jsonb_extract_path") &&
+            base == ctx.resourceAlias ||
+            (!base.includes("jsonb_extract_path") &&
             !base.includes("EXISTS") &&
             !base.includes("SELECT"));
 }
@@ -1159,19 +1179,19 @@ isolated function isResourceRootLevel(string base, TranspilerContext ctx) return
 # + return - True if the expression contains boolean operators
 isolated function isBooleanExpression(string expr) returns boolean {
     return expr.includes(" = ") ||
-           expr.includes(" != ") ||
-           expr.includes(" < ") ||
-           expr.includes(" > ") ||
-           expr.includes(" <= ") ||
-           expr.includes(" >= ") ||
-           expr.includes(" AND ") ||
-           expr.includes(" OR ") ||
-           expr.includes(" IS NULL") ||
-           expr.includes(" IS NOT NULL") ||
-           expr.startsWith("EXISTS ") ||
-           expr.startsWith("(EXISTS ") ||
-           expr.startsWith("NOT ") ||
-           expr.startsWith("(NOT ");
+            expr.includes(" != ") ||
+            expr.includes(" < ") ||
+            expr.includes(" > ") ||
+            expr.includes(" <= ") ||
+            expr.includes(" >= ") ||
+            expr.includes(" AND ") ||
+            expr.includes(" OR ") ||
+            expr.includes(" IS NULL") ||
+            expr.includes(" IS NOT NULL") ||
+            expr.startsWith("EXISTS ") ||
+            expr.startsWith("(EXISTS ") ||
+            expr.startsWith("NOT ") ||
+            expr.startsWith("(NOT ");
 }
 
 // ========================================
